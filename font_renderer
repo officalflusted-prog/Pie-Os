@@ -1,0 +1,98 @@
+; ----------------------------------------------------------------------
+; File: font_renderer.asm
+; Purpose: Advanced Font Handling, TrueType Rasterization, and Unicode display.
+; ----------------------------------------------------------------------
+
+bits 32
+
+; --- Constants ---
+MAX_GLYPH_CACHE     equ 256      ; Cache for recently used glyph bitmaps (for performance)
+DEFAULT_FONT_PATH   db "/system/fonts/default.ttf", 0x00
+
+; --- Global Data ---
+current_font_metrics times 64 db 0 ; Font properties (baseline, ascent, descent)
+glyph_cache_table times MAX_GLYPH_CACHE * 8 db 0 ; In-memory cache structure
+next_cache_slot     dd 0
+
+; --- External Subroutines ---
+; extern ext2_read_file_to_buffer (from ext2_driver.asm)
+; extern fb_draw_glyph (from fb_manager.asm, the low-level pixel drawing)
+; extern unicode_decode_utf8 (from lib.asm or utility module)
+
+; ----------------------------------------------------------------------
+; Subroutine: font_renderer_init
+; Loads and initializes the default font file and prepares the rasterizer.
+; ----------------------------------------------------------------------
+font_renderer_init:
+    pushad
+    
+    ; 1. Load the TTF font file into a persistent memory buffer
+    mov esi, DEFAULT_FONT_PATH
+    ; call ext2_read_file_to_buffer 
+    
+    ; 2. Parse critical TTF tables (e.g., 'head', 'maxp', 'hhea')
+    ; This calculates global font properties like glyph count and metrics.
+    
+    ; 3. Initialize the glyph cache (clear pointers)
+    
+    popad
+    ret
+
+; ----------------------------------------------------------------------
+; Subroutine: get_glyph_bitmap
+; Retrieves or rasterizes the bitmap for a given Unicode code point.
+; ----------------------------------------------------------------------
+; Parameters:
+;   EAX: 32-bit Unicode Code Point
+;
+; Returns:
+;   EAX: Pointer to the 32-bit glyph bitmap in the cache
+;   EBX: Glyph advance width (how far to move the cursor)
+; ----------------------------------------------------------------------
+get_glyph_bitmap:
+    pushad
+    
+    ; 1. Check Glyph Cache
+    ; If the Unicode Code Point (EAX) is found in the cache, retrieve its bitmap pointer (EAX) and width (EBX).
+    ; jmp .cache_hit
+    
+    ; 2. Rasterize the Glyph (Cache Miss)
+    ; a. Look up the glyph index (using the TTF 'cmap' table).
+    ; b. Read vector outlines (from the 'glyf' table).
+    ; c. Run the **TrueType Rasterizer** to convert vector data to a pixel bitmap.
+    
+    ; 3. Store the result in the cache for future use.
+    
+.cache_hit:
+    ; ... (Logic to return Ptr in EAX and Width in EBX)
+    
+    popad
+    ret
+
+; ----------------------------------------------------------------------
+; Subroutine: render_string_unicode
+; Main function to display a UTF-8 string, handling decoding and drawing.
+; ----------------------------------------------------------------------
+; Parameters:
+;   ESI: Pointer to the UTF-8 encoded string
+;   EAX: Starting X position (in pixels)
+;   EBX: Starting Y position (in pixels)
+render_string_unicode:
+    pushad
+    
+    ; Use locals to track cursor position
+    mov [current_x_pos_local], eax
+    mov [current_y_pos_local], ebx
+
+    mov edi, esi                ; EDI = Current read pointer (UTF-8 string)
+    
+.decode_loop:
+    cmp byte [edi], 0x00
+    je .done_rendering          ; End of string
+    
+    ; 1. Decode next Unicode Code Point
+    mov esi, edi
+    ; call unicode_decode_utf8   ; Returns 32-bit code point in ECX, advances EDI
+    
+    ; 2. Get the Glyph Bitmap
+    mov eax, ecx                ; EAX
