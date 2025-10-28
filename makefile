@@ -1,8 +1,9 @@
 ----------------------------------------------------------------------
-Pi OS Kernel Makefile (Fixed for Tab Indentation)
+Pi OS Kernel Makefile
 Automates the assembly, linking, and image creation for the 51-file Pi OS.
 ----------------------------------------------------------------------
---- Tools and Settings ---
+--- Configuration & Versioning ---
+BUILD_VERSION = 0.9.1a
 NASM    = nasm
 LD      = ld
 QEMU    = qemu-system-x86_64
@@ -31,6 +32,10 @@ OBJECTS = $(CORE_OBJS) $(DRIVER_OBJS) $(FS_OBJS) $(GUI_OBJS) $(TEXT_OBJS) $(APP_
 .PHONY: all clean run upload
 --- Default Target: Build the entire OS image ---
 all: $(IMAGE)
+@echo "=========================================="
+@echo "  PI OS BUILD SUCCESSFUL"
+@echo "  Version: $(BUILD_VERSION)"
+@echo "=========================================="
 --- Rule 1: Link all object files into the kernel binary (.bin) ---
 $(KERNEL): $(OBJECTS) $(LDSCRIPT)
 @echo "-> Linking $(KERNEL)..."
@@ -49,8 +54,8 @@ $(NASM) -f elf32 $< -o $@
 This uses the specific QEMU executable confirmed in Termux.
 run: $(IMAGE)
 @echo "-> Launching Pi OS in QEMU (VNC on :1, port 5901)..."
-(QEMU) -drive format=raw,file=(IMAGE) -m $(MEM_SIZE) -vnc :1 -name "Pi OS Kernel"
---- Rule 5: Clean up generated files ---
+(QEMU) -drive format=raw,file=(IMAGE) -m (MEM_SIZE) -vnc :1 -name "Pi OS Kernel v(BUILD_VERSION)"
+--- Rule 5: Clean up generated files (The 'clear' target) ---
 clean:
 @echo "-> Cleaning up build artifacts..."
 rm -f $(OBJECTS) $(KERNEL) $(IMAGE)
