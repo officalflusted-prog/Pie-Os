@@ -38,24 +38,21 @@ all: $(IMAGE)
 @echo "=========================================="
 --- Rule 1: Link all object files into the kernel binary (.bin) ---
 $(KERNEL): $(OBJECTS) $(LDSCRIPT)
-@echo "-> Linking $(KERNEL)..."
 $(LD) -m elf_i386 -T $(LDSCRIPT) -o $(KERNEL) $(OBJECTS)
 --- Rule 2: Create the final bootable image (.img) ---
 $(IMAGE): $(KERNEL) $(BOOT)
-@echo "-> Creating bootable image $(IMAGE)..."
 cat $(BOOT) $(KERNEL) > $(IMAGE)
 @echo "-> Image size check complete."
 --- Rule 3: Compile all assembly files into object files (.o) ---
 Generic rule to compile all .asm files, including the qemu config
 %.o: %.asm qemu_config.inc
-@echo "-> Assembling $<"
 $(NASM) -f elf32 $< -o $@
 --- Rule 4: Run the OS in QEMU ---
 This uses the specific QEMU executable confirmed in Termux.
 run: $(IMAGE)
 @echo "-> Launching Pi OS in QEMU (VNC on :1, port 5901)..."
 (QEMU) -drive format=raw,file=(IMAGE) -m (MEM_SIZE) -vnc :1 -name "Pi OS Kernel v(BUILD_VERSION)"
---- Rule 5: Clean up generated files (The 'clear' target) ---
+--- Rule 5: Clean up generated files ---
 clean:
 @echo "-> Cleaning up build artifacts..."
 rm -f $(OBJECTS) $(KERNEL) $(IMAGE)
