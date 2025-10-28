@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------
-Pi OS Kernel Makefile
+Pi OS Kernel Makefile (Fixed for Tab Indentation)
 Automates the assembly, linking, and image creation for the 51-file Pi OS.
 ----------------------------------------------------------------------
 --- Tools and Settings ---
@@ -12,7 +12,6 @@ BOOT    = boot_loader.bin
 LDSCRIPT= linker.ld
 MEM_SIZE= 128
 --- Source Files (51 files) ---
-NOTE: The order here matters for linking (boot/kernel core first, then drivers/apps).
 1. Kernel Core, Memory, and System Calls
 CORE_OBJS = kernel.o gdt_idt.o vmem.o pager.o syscall.o timer_sched.o syscall_translator.o metrics.o
 2. Hardware and I/O Drivers
@@ -39,7 +38,6 @@ $(LD) -m elf_i386 -T $(LDSCRIPT) -o $(KERNEL) $(OBJECTS)
 --- Rule 2: Create the final bootable image (.img) ---
 $(IMAGE): $(KERNEL) $(BOOT)
 @echo "-> Creating bootable image $(IMAGE)..."
-# The bootloader MUST be 512 bytes and placed first.
 cat $(BOOT) $(KERNEL) > $(IMAGE)
 @echo "-> Image size check complete."
 --- Rule 3: Compile all assembly files into object files (.o) ---
