@@ -1,44 +1,74 @@
 # Pi OS Kernel Makefile
-BUILD_VERSION = 0.9.1a
+BUILD_VERSION = 0.9.2a
 NASM    = nasm
 LD      = ld
-QEMU    = qemu-system-x86_64
+QEMU32  = qemu-system-i386
+QEMU64  = qemu-system-x86_64
 IMAGE   = piOS.img
-KERNEL  = piOS.bin
-BOOT    = boot_loader.bin
-LDSCRIPT= linker.ld
+KERNEL  = kernel.bin
+BOOT    = boot.bin
 MEM_SIZE= 128
 
-CORE_OBJS = kernel.o gdt_idt.o vmem.o pager.o syscall.o timer_sched.o syscall_translator.o metrics.o
-DRIVER_OBJS = pci.o driver_manager.o disk_io.o ahci_driver.o input_manager.o mouse_driver.o serial_port.o usb_driver.o rtl8139_driver.o
-FS_OBJS = ext2_driver.o journal.o registry.o boot_config.o devfs.o app_env.o
-GUI_OBJS = fb_manager.o fl.o fl_api.o vnc_server.o window_manager.o window_server.o taskbar.o start_menu.o
-TEXT_OBJS = kbd_layout.o unicode.o i18n.o font_renderer.o
-APP_OBJS = task_manager.o pe_loader.o clr_host.o assembly_loader.o security.o threads.o
-UTIL_OBJS = shell.o guest_loader.o net_stack.o tcp_ip.o zlib.o
+# Linker scripts
+LDSCRIPT32 = linker.ld
+LDSCRIPT64 = linker64.ld
 
-OBJECTS = $(CORE_OBJS) $(DRIVER_OBJS) $(FS_OBJS) $(GUI_OBJS) $(TEXT_OBJS) $(APP_OBJS) $(UTIL_OBJS)
+# Build mode switch
+ifeq ($(BUILD64),1)
+  NASM_FMT = elf64
+  LD_ARCH  = elf_x86_64
+  LDSCRIPT = $(LDSCRIPT64)
+  QEMU     = $(QEMU64)
+else
+  NASM_FMT = elf32
+  LD_ARCH  = elf_i386
+  LDSCRIPT = $(LDSCRIPT32)
+  QEMU     = $(QEMU32)
+endif
 
-.PHONY: all clean run
+# Source list (all .asm)
+SRCS = \
+ achi_driver.asm app_env.asm assembly_loader.asm boot.asm boot_config.asm \
+ clr_host.asm deflate.asm deflate.asm1 desktop_manager.asm devfs.asm device_driver.asm \
+ disk_cache.asm disk_io.asm drive_manager.asm ext2_driver.asm fat12.asm fl_api.asm \
+ font_renderer gdt_idt.asm graphics.asm guest_loader.asm i18n.asm input.asm \
+ interrupts.asm journal.asm kbd_layout.asm kernel.asm lib.asm linker.ld lmode_switch.asm \
+ metrics.asm nic_driver.asm nic_isr.asm pager.asm pci.asm pe_loader.asm pipe.asm \
+ pmode_switch.asm qemu_config.inc registry.asm render_api.asm security.asm shell.asm \
+ shell_scripts.asm start_menu.asm syscall.asm syscall_translator.asm task_manager.asm \
+ taskbar.asm tcpip.asm timer_sched.asm unicode.asm vnc_protocol.asm xstartup.asm
+
+# Objects: map .asm -> .o (skip non-asm files)
+OBJS = $(patsubst %.asm,%.o,$(filter %.asm,$(SRCS)))
+
+.PHONY: all clean run kernel image
 
 all: $(IMAGE)
 	@echo "=========================================="
 	@echo "  PI OS BUILD SUCCESSFUL"
 	@echo "  Version: $(BUILD_VERSION)"
+	@echo "  Mode: $(if $(BUILD64),64-bit,32-bit)"
 	@echo "=========================================="
 
-$(KERNEL): $(OBJECTS) $(LDSCRIPT)
-	$(LD) -m elf_i386 -T $(LDSCRIPT) -o $(KERNEL) $(OBJECTS)
+# Assemble boot to raw 512B sector (bin)
+$(BOOT): boot.asm
+	$(NASM) -f bin $< -o $@
 
-$(IMAGE): $(KERNEL) $(BOOT)
-	cat $(BOOT) $(KERNEL) > $(IMAGE)
-	@echo "-> Image size check complete."
-
+# Assemble all .asm sources to objects
 %.o: %.asm
-	$(NASM) -f elf32 $< -o $@
+	$(NASM) -f $(NASM_FMT) $< -o $@
+
+# Link kernel objects to a flat binary with the selected linker script
+$(KERNEL): $(OBJS) $(LDSCRIPT)
+	$(LD) -m $(LD_ARCH) -T $(LDSCRIPT) -o $@ $(OBJS)
+
+# Stitch boot + kernel into raw image
+$(IMAGE): $(BOOT) $(KERNEL)
+	cat $(BOOT) $(KERNEL) > $(IMAGE)
+	@echo "-> Image assembled: $(IMAGE)"
 
 run: $(IMAGE)
-	$(QEMU) -drive format=raw,file=$(IMAGE) -m $(MEM_SIZE) -vnc :1 -name "Pi OS Kernel v$(BUILD_VERSION)"
+	$(QEMU) -drive format=raw,file=$(IMAGE) -m $(MEM_SIZE) -vnc :1 -name "Pi OS v$(BUILD_VERSION)"
 
 clean:
-	rm -f $(OBJECTS) $(KERNEL) $(IMAGE)
+	rm -f $(OBJS) $(KERNEL) $(IMAGE) $(BOOT)
